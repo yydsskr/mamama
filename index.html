@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 三馬競速 🎲</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 { 
+            color: white; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        .rule-info {
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #333;
+            max-width: 800px;
+            text-align: center;
+            line-height: 1.6;
+            border: 2px solid #fff;
+        }
+
+        .rule-highlight {
+            background: #ffeaa7;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #d35400;
+        }
+
+        /* 骰子顯示區域 */
+        .dice-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .dice-box {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 90px;
+            border: 2px solid #ddd;
+            transition: all 0.3s;
+        }
+
+        .dice-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .dice {
+            width: 55px;
+            height: 55px;
+            background: #fff;
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 0 auto 10px auto;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .dice.rolling {
+            animation: roll 0.5s ease-in-out infinite;
+        }
+
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .dice-result {
+            font-size: 12px;
+            color: #666;
+            min-height: 30px;
+            font-weight: bold;
+        }
+
+        .dice-1-2 { border-color: #ff6b6b; color: #ff6b6b; }
+        .dice-3-4 { border-color: #4ecdc4; color: #4ecdc4; }
+        .dice-5-6 { border-color: #95e1d3; color: #2d6a4f; }
+        .dice-big { border-color: #333; color: #333; background: #f0f0f0; }
+
+        .dice-box.active {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateY(-5px);
+        }
+
+        /* 統計顯示 */
+        .stats-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 120px;
+        }
+
+        .stat-box h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .stat-red { color: #ff6b6b; }
+        .stat-blue { color: #4ecdc4; }
+        .stat-green { color: #95e1d3; }
+        .stat-penalty { color: #333; }
+
+        /* 遊戲區域 */
+        .game-board {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        .track {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+            height: 60px;
+            background-color: #e9ecef;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 2px solid #dee2e6;
+        }
+
+        .track::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 6.6%, rgba(0,0,0,0.05) 6.6%, rgba(0,0,0,0.05) 6.7%);
+            z-index: 0;
+        }
+
+        .finish-line {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-size: 10px 10px;
+            background-color: #fff;
+            z-index: 1;
+            opacity: 0.5;
+        }
+
+        .horse {
+            font-size: 40px;
+            position: absolute;
+            left: 0;
+            transition: left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3));
+        }
+
+        /* 控制按鈕 */
+        .controls {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-roll-all { 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            font-size: 18px;
+            padding: 20px 50px;
+        }
+
+        .btn-reset { 
+            background: linear-gradient(135deg, #888, #666); 
+            margin-top: 10px;
+        }
+
+        /* 日誌區域 */
+        #log {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            width: 100%;
+            max-width: 800px;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .log-entry { 
+            margin-bottom: 8px; 
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #eee;
+            line-height: 1.4;
+        }
+
+        .win-msg { color: #d63031; font-weight: bold; font-size: 16px; }
+        .warn-msg { color: #e67e22; font-weight: bold; }
+        .dice-log { color: #6c5ce7; font-weight: bold; }
+        .summary-log { background: #f0f0f0; padding: 10px; border-radius: 5px; margin: 5px 0; }
+
+        .rolling-disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎲 三馬競速 🎲</h1>
+    
+    <div class="rule-info">
+        📋 規則：5 個骰子同時擲出 | 
+        <span class="rule-highlight">小骰子 1-2→馬</span> | 
+        <span class="rule-highlight">小骰子 3-4→彩虹小馬</span> | 
+        <span class="rule-highlight">小骰子 5-6→斑馬</span> | 
+        <span class="rule-highlight">大骰子 4-6→領跑者退 3 步 (不加步數)</span> | 
+        必須剛好 15 格獲勝
+    </div>
+
+    <!-- 骰子顯示區域 -->
+    <div class="dice-container">
+        <div class="dice-box" id="box-1">
+            <h3>小骰子 1</h3>
+            <div class="dice dice-1-2" id="dice-1">?</div>
+            <div class="dice-result" id="result-1">-</div>
+        </div>
+        <div class="dice-box" id="box-2">
+            <h3>小骰子 2</h3>
+            <div class="dice dice-3-4" id="dice-2">?</div>
+            <div class="dice-result" id="result-2">-</div>
+        </div>
+        <div class="dice-box" id="box-3">
+            <h3>小骰子 3</h3>
+            <div class="dice dice-5-6" id="dice-3">?</div>
+            <div class="dice-result" id="result-3">-</div>
+        </div>
+        <div class="dice-box" id="box-4">
+            <h3>小骰子 4</h3>
+            <div class="dice dice-1-2" id="dice-4">?</div>
+            <div class="dice-result" id="result-4">-</div>
+        </div>
+        <div class="dice-box" id="box-5">
+            <h3>大骰子 (懲罰)</h3>
+            <div class="dice dice-big" id="dice-5">?</div>
+            <div class="dice-result" id="result-5">-</div>
+        </div>
+    </div>
+
+    <!-- 統計顯示 -->
+    <div class="stats-container">
+        <div class="stat-box">
+            <h4>🐎 馬步數</h4>
+            <div class="stat-value stat-red" id="stat-red">0</div>
+        </div>
+        <div class="stat-box">
+            <h4>🦄 彩虹小馬步數</h4>
+            <div class="stat-value stat-blue" id="stat-blue">0</div>
+        </div>
+        <div class="stat-box">
+            <h4>🦓 斑馬步數</h4>
+            <div class="stat-value stat-green" id="stat-green">0</div>
+        </div>
+        <div class="stat-box">
+            <h4>⚡ 懲罰觸發</h4>
+            <div class="stat-value stat-penalty" id="stat-penalty">4-6 觸發</div>
+        </div>
+    </div>
+
+    <div class="game-board">
+        <!-- 賽道 1: 馬 -->
+        <div class="track" id="track-0">
+            <div class="finish-line"></div>
+            <div class="horse" id="horse-0">🐎</div>
+        </div>
+        <!-- 賽道 2: 彩虹小馬 -->
+        <div class="track" id="track-1">
+            <div class="finish-line"></div>
+            <div class="horse" id="horse-1">🦄</div>
+        </div>
+        <!-- 賽道 3: 斑馬 -->
+        <div class="track" id="track-2">
+            <div class="finish-line"></div>
+            <div class="horse" id="horse-2">🦓</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-roll-all" id="btn-roll" onclick="rollAllDice()">🎲 擲所有骰子</button>
+    </div>
+
+    <button class="btn-reset" onclick="resetGame()">🔄 重置遊戲</button>
+
+    <div id="log">
+        <div class="log-entry">🎮 遊戲開始！點擊「擲所有骰子」，5 個骰子同時生效。<br>💡 大骰子 1-3 無效果，4-6 領跑者退 3 步 (大骰子不計步數)。</div>
+    </div>
+
+    <script>
+        const TOTAL_STEPS = 15;
+        const HORSES = [
+            { id: 0, name: "馬", emoji: "🐎", pos: 0, color: 'red' },
+            { id: 1, name: "彩虹小馬", emoji: "🦄", pos: 0, color: 'blue' },
+            { id: 2, name: "斑馬", emoji: "🦓", pos: 0, color: 'green' }
+        ];
+        
+        let isGameOver = false;
+        let isRolling = false;
+        let rollCount = 0;
+
+        function init() {
+            updatePositions();
+        }
+
+        function updatePositions() {
+            HORSES.forEach(horse => {
+                const horseEl = document.getElementById(`horse-${horse.id}`);
+                let percent = (horse.pos / TOTAL_STEPS) * 90;
+                horseEl.style.left = percent + '%';
+            });
+        }
+
+        function addLog(msg, type = 'normal') {
+            const logEl = document.getElementById('log');
+            const div = document.createElement('div');
+            if (type === 'win') div.classList.add('win-msg');
+            if (type === 'warn') div.classList.add('warn-msg');
+            if (type === 'dice') div.classList.add('dice-log');
+            if (type === 'summary') {
+                div.innerHTML = `<div class="summary-log">${msg}</div>`;
+            }
+            div.innerHTML = msg;
+            logEl.prepend(div);
+        }
+
+        function rollAllDice() {
+            if (isGameOver || isRolling) return;
+            
+            isRolling = true;
+            rollCount++;
+            document.getElementById('btn-roll').disabled = true;
+            document.getElementById('btn-roll').classList.add('rolling-disabled');
+
+            const diceElements = [];
+            for (let i = 1; i <= 5; i++) {
+                const diceEl = document.getElementById(`dice-${i}`);
+                const boxEl = document.getElementById(`box-${i}`);
+                diceEl.classList.add('rolling');
+                boxEl.classList.add('active');
+                diceElements.push({ dice: diceEl, box: boxEl, id: i });
+            }
+
+            let rollFrames = 0;
+            const rollInterval = setInterval(() => {
+                diceElements.forEach(item => {
+                    item.dice.innerText = Math.floor(Math.random() * 6) + 1;
+                });
+                rollFrames++;
+                if (rollFrames >= 15) {
+                    clearInterval(rollInterval);
+                    finalizeAllRolls(diceElements);
+                }
+            }, 50);
+        }
+
+        function finalizeAllRolls(diceElements) {
+            const results = [];
+            
+            diceElements.forEach(item => {
+                const finalValue = Math.floor(Math.random() * 6) + 1;
+                item.dice.innerText = finalValue;
+                item.dice.classList.remove('rolling');
+                item.box.classList.remove('active');
+                results.push({ id: item.id, value: finalValue });
+            });
+
+            let horse1Steps = 0; // 馬
+            let horse2Steps = 0; // 彩虹小馬
+            let horse3Steps = 0; // 斑馬
+            let penaltyTriggered = false;
+            let penaltySteps = 0;
+
+            results.forEach((result, index) => {
+                const diceNum = index + 1;
+                const value = result.value;
+                const resultEl = document.getElementById(`result-${diceNum}`);
+                const isBigDice = (diceNum === 5);
+                
+                let moveText = '';
+                let moveColor = '#666';
+                
+                // 只有小骰子 (1-4) 計算移動步數
+                if (!isBigDice) {
+                    if (value <= 2) {
+                        horse1Steps++;
+                        moveText = '馬 +1';
+                        moveColor = '#ff6b6b';
+                    } else if (value <= 4) {
+                        horse2Steps++;
+                        moveText = '彩虹小馬 +1';
+                        moveColor = '#4ecdc4';
+                    } else {
+                        horse3Steps++;
+                        moveText = '斑馬 +1';
+                        moveColor = '#2d6a4f';
+                    }
+                    resultEl.innerText = `${value} (${moveText})`;
+                    resultEl.style.color = moveColor;
+                } else {
+                    // 大骰子邏輯：1-3 無效果，4-6 懲罰
+                    if (value >= 4) {
+                        penaltyTriggered = true;
+                        penaltySteps = 3;
+                        resultEl.innerText = `${value} (懲罰退 3 步)`;
+                        resultEl.style.color = '#d63031';
+                        resultEl.style.fontWeight = 'bold';
+                    } else {
+                        resultEl.innerText = `${value} (無效果)`;
+                        resultEl.style.color = '#666';
+                    }
+                }
+            });
+
+            // 更新統計
+            document.getElementById('stat-red').innerText = horse1Steps;
+            document.getElementById('stat-blue').innerText = horse2Steps;
+            document.getElementById('stat-green').innerText = horse3Steps;
+            document.getElementById('stat-penalty').innerText = penaltyTriggered ? `退${penaltySteps}步` : '無';
+            document.getElementById('stat-penalty').style.color = penaltyTriggered ? '#d63031' : '#333';
+
+            // 記錄日誌
+            const diceValues = results.map(r => r.value).join(', ');
+            addLog(`🎲 第${rollCount}輪：[${diceValues}]`, 'dice');
+            
+            let summary = '<strong>本輪效果：</strong><br>';
+            if (horse1Steps > 0) summary += `🐎 馬 +${horse1Steps}步 `;
+            if (horse2Steps > 0) summary += `🦄 彩虹小馬 +${horse2Steps}步 `;
+            if (horse3Steps > 0) summary += `🦓 斑馬 +${horse3Steps}步 `;
+            if (penaltyTriggered) summary += `⚡ 大骰子觸發懲罰 (退${penaltySteps}步) `;
+            if (horse1Steps === 0 && horse2Steps === 0 && horse3Steps === 0 && !penaltyTriggered) {
+                summary += `⚠️ 本輪無效果`;
+            }
+            addLog(summary, 'summary');
+
+            // 執行移動
+            if (horse1Steps > 0) moveHorse(0, horse1Steps);
+            if (horse2Steps > 0) moveHorse(1, horse2Steps);
+            if (horse3Steps > 0) moveHorse(2, horse3Steps);
+            // 大骰子 4-6 觸發懲罰
+            if (penaltyTriggered) applyPenalty(penaltySteps);
+
+            isRolling = false;
+            if (!isGameOver) {
+                document.getElementById('btn-roll').disabled = false;
+                document.getElementById('btn-roll').classList.remove('rolling-disabled');
+            }
+        }
+
+        function moveHorse(index, steps = 1) {
+            if (isGameOver) return;
+            const horse = HORSES[index];
+            const newPos = horse.pos + steps;
+
+            if (newPos === TOTAL_STEPS) {
+                horse.pos = newPos;
+                addLog(`✅ ${horse.name} 前進${steps}步，<span class="win-msg">剛好到達終點！</span>`);
+                updatePositions();
+                checkWin(horse);
+            } else if (newPos > TOTAL_STEPS) {
+                addLog(`⚠️ ${horse.name} 步數過多（需${TOTAL_STEPS - horse.pos}步，搖了${steps}步），<span class="warn-msg">原地不動！</span>`, 'warn');
+                updatePositions();
+            } else {
+                horse.pos = newPos;
+                addLog(`📍 ${horse.name} 前進了${steps}步，目前位置：${horse.pos}/${TOTAL_STEPS}`);
+                updatePositions();
+            }
+        }
+
+        function checkWin(horse) {
+            if (horse.pos === TOTAL_STEPS) {
+                isGameOver = true;
+                addLog(`🏆🏆 恭喜！${horse.name} 贏得了比賽！ 🏆🏆`, 'win');
+                document.getElementById('btn-roll').disabled = true;
+                document.querySelector('.btn-reset').disabled = false;
+            }
+        }
+
+        function applyPenalty(steps) {
+            let maxPos = -1;
+            let leaders = [];
+
+            HORSES.forEach(h => {
+                if (h.pos > maxPos) {
+                    maxPos = h.pos;
+                    leaders = [h];
+                } else if (h.pos === maxPos && h.pos > 0) {
+                    leaders.push(h);
+                }
+            });
+
+            if (maxPos === 0) {
+                addLog(`💤 大家都在起點，無法懲罰（無效果）！`);
+                return;
+            }
+
+            const victim = leaders[Math.floor(Math.random() * leaders.length)];
+            victim.pos -= steps;
+            if (victim.pos < 0) victim.pos = 0;
+            
+            addLog(`🔨 懲罰生效！${victim.name} 後退 ${steps} 步！`, 'warn');
+            updatePositions();
+        }
+
+        function resetGame() {
+            isGameOver = false;
+            isRolling = false;
+            rollCount = 0;
+            HORSES.forEach(h => h.pos = 0);
+            updatePositions();
+            
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`dice-${i}`).innerText = '?';
+                document.getElementById(`result-${i}`).innerText = '-';
+                document.getElementById(`result-${i}`).style.color = '#666';
+                document.getElementById(`box-${i}`).classList.remove('active');
+            }
+            
+            document.getElementById('stat-red').innerText = '0';
+            document.getElementById('stat-blue').innerText = '0';
+            document.getElementById('stat-green').innerText = '0';
+            document.getElementById('stat-penalty').innerText = '4-6 觸發';
+            document.getElementById('stat-penalty').style.color = '#333';
+            
+            document.getElementById('log').innerHTML = '<div class="log-entry">🎮 遊戲已重置！大骰子 1-3 無效果，4-6 懲罰退 3 步。</div>';
+            document.getElementById('btn-roll').disabled = false;
+            document.getElementById('btn-roll').classList.remove('rolling-disabled');
+            document.querySelector('.btn-reset').disabled = false;
+        }
+
+        init();
+    </script>
+</body>
+</html>
