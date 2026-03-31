@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎲 三馬競速 🎲</title>
+    <title>🎲 三馬競速 - 最終規則版 🎲</title>
     <style>
         body {
             font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -277,7 +277,7 @@
 </head>
 <body>
 
-    <h1>🎲 三馬競速 🎲</h1>
+    <h1>🎲 三馬競速 - 最終規則版 🎲</h1>
     
     <div class="rule-info">
         📋 規則：5 個骰子同時擲出 | 
@@ -285,7 +285,7 @@
         <span class="rule-highlight">小骰子 3-4→彩虹小馬</span> | 
         <span class="rule-highlight">小骰子 5-6→斑馬</span> | 
         <span class="rule-highlight">大骰子 4-6→領跑者退 3 步 (不加步數)</span> | 
-        必須剛好 15 格獲勝
+        <span class="rule-highlight">回合結束時停在 15 格才獲勝</span>
     </div>
 
     <!-- 骰子顯示區域 -->
@@ -362,7 +362,7 @@
     <button class="btn-reset" onclick="resetGame()">🔄 重置遊戲</button>
 
     <div id="log">
-        <div class="log-entry">🎮 遊戲開始！點擊「擲所有骰子」，5 個骰子同時生效。<br>💡 大骰子 1-3 無效果，4-6 領跑者退 3 步 (大骰子不計步數)。</div>
+        <div class="log-entry">🎮 遊戲開始！點擊「擲所有骰子」，5 個骰子同時生效。<br>💡 大骰子 1-3 無效果，4-6 領跑者退 3 步 (大骰子不計步數)。<br>💡 <strong>修正：回合結束時必須停在 15 格才獲勝，中途到達被罰退不算贏！</strong></div>
     </div>
 
     <script>
@@ -516,8 +516,12 @@
             if (horse1Steps > 0) moveHorse(0, horse1Steps);
             if (horse2Steps > 0) moveHorse(1, horse2Steps);
             if (horse3Steps > 0) moveHorse(2, horse3Steps);
+            
             // 大骰子 4-6 觸發懲罰
             if (penaltyTriggered) applyPenalty(penaltySteps);
+
+            // 【重要修改】所有移動和懲罰完成後，才檢查勝利
+            checkRoundWin();
 
             isRolling = false;
             if (!isGameOver) {
@@ -533,9 +537,9 @@
 
             if (newPos === TOTAL_STEPS) {
                 horse.pos = newPos;
-                addLog(`✅ ${horse.name} 前進${steps}步，<span class="win-msg">剛好到達終點！</span>`);
+                addLog(`✅ ${horse.name} 前進${steps}步，到達終點！(需等待回合結束)`);
                 updatePositions();
-                checkWin(horse);
+                // 移除這裡的 checkWin 調用，改為回合結束後統一檢查
             } else if (newPos > TOTAL_STEPS) {
                 addLog(`⚠️ ${horse.name} 步數過多（需${TOTAL_STEPS - horse.pos}步，搖了${steps}步），<span class="warn-msg">原地不動！</span>`, 'warn');
                 updatePositions();
@@ -546,12 +550,18 @@
             }
         }
 
-        function checkWin(horse) {
-            if (horse.pos === TOTAL_STEPS) {
-                isGameOver = true;
-                addLog(`🏆🏆 恭喜！${horse.name} 贏得了比賽！ 🏆🏆`, 'win');
-                document.getElementById('btn-roll').disabled = true;
-                document.querySelector('.btn-reset').disabled = false;
+        // 【新增】回合結束時檢查勝利
+        function checkRoundWin() {
+            if (isGameOver) return;
+            
+            for (let horse of HORSES) {
+                if (horse.pos === TOTAL_STEPS) {
+                    isGameOver = true;
+                    addLog(`🏆🏆 恭喜！${horse.name} 贏得了比賽！ 🏆🏆`, 'win');
+                    document.getElementById('btn-roll').disabled = true;
+                    document.querySelector('.btn-reset').disabled = false;
+                    return;
+                }
             }
         }
 
@@ -574,10 +584,16 @@
             }
 
             const victim = leaders[Math.floor(Math.random() * leaders.length)];
+            const oldPos = victim.pos;
             victim.pos -= steps;
             if (victim.pos < 0) victim.pos = 0;
             
-            addLog(`🔨 懲罰生效！${victim.name} 後退 ${steps} 步！`, 'warn');
+            // 特別提示：如果從終點被罰退
+            if (oldPos === TOTAL_STEPS && victim.pos < TOTAL_STEPS) {
+                addLog(`🔨 懲罰生效！${victim.name} 從終點後退 ${steps} 步至 ${victim.pos} 格！<span class="warn-msg">(失去勝利資格)</span>`, 'warn');
+            } else {
+                addLog(`🔨 懲罰生效！${victim.name} 後退 ${steps} 步！`, 'warn');
+            }
             updatePositions();
         }
 
@@ -601,7 +617,7 @@
             document.getElementById('stat-penalty').innerText = '4-6 觸發';
             document.getElementById('stat-penalty').style.color = '#333';
             
-            document.getElementById('log').innerHTML = '<div class="log-entry">🎮 遊戲已重置！大骰子 1-3 無效果，4-6 懲罰退 3 步。</div>';
+            document.getElementById('log').innerHTML = '<div class="log-entry">🎮 遊戲已重置！大骰子 1-3 無效果，4-6 懲罰退 3 步。<br><strong>回合結束時必須停在 15 格才獲勝！</strong></div>';
             document.getElementById('btn-roll').disabled = false;
             document.getElementById('btn-roll').classList.remove('rolling-disabled');
             document.querySelector('.btn-reset').disabled = false;
